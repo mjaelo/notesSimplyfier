@@ -5,16 +5,18 @@ import numpy as np
 class Parameters:
     columns = 1
     folder = "mystery of love"
-    min_line_size = 50#auto
-    max_line_size = 85#auto
+    min_line_size = 50  # auto
+    max_line_size = 85  # auto
     instrument_nr = 4
-    line_black_tolerance = 254.53#auto
-    line_block_tolerance = 254.74#auto
+    line_black_tolerance = 254.53  # auto
+    line_block_tolerance = 254.74  # auto
     how_many_img = 44
-    max_lines_in_column = 18#ile linii w pliku wynikowym moze byc pod soba
-    padding = 50#auto
+    max_lines_in_column = 18  # ile linii w pliku wynikowym moze byc pod soba
+    padding = 50  # auto
     lines_in_block = 6
 
+
+# dodaj skalowanie obrazu do tego samego rozmiaru po podzieleniu na bloki
 
 def line_connector(lines, page_nr, parameters):
     padding = parameters.padding
@@ -22,7 +24,6 @@ def line_connector(lines, page_nr, parameters):
     height = 0
     width = 0
     prev_height = 0
-
     # create empty image in appropriate size
     line_nr = 0
     for line in lines:
@@ -33,7 +34,7 @@ def line_connector(lines, page_nr, parameters):
         if line is not None:
             prev_height = len(line)
             height += prev_height
-            if len(line) > width:
+            if len(line[0]) > width:
                 width = len(line[0])
         else:
             print("error: empty line")
@@ -43,9 +44,10 @@ def line_connector(lines, page_nr, parameters):
     if first_height != 0:
         width *= 2
         width += padding
-    img = np.zeros((height + padding*2, width + padding*2, 3), np.uint8)
+    img = np.zeros((height + padding * 2, width + padding * 2, 3), np.uint8)
     img.fill(255)
 
+    # max width=556
     # put lines in image
     w1 = padding
     h1 = padding
@@ -55,11 +57,10 @@ def line_connector(lines, page_nr, parameters):
         line_nr += 1
         if line is not None:
             prev_height = len(line)
-            w2 = w1 + len(line[0])
             if line_nr == parameters.max_lines_in_column + 1:
-                w1 = int((width - padding) / 2 + padding)
-                w2 += w1
+                w1 = int((width - padding) / 2 + padding * 2)
                 h1 = padding
+            w2 = w1 + len(line[0])
             h2 = h1 + prev_height
             # print("shape", w1, h1)
             img[h1:h2, w1:w2, :3] = line
@@ -118,7 +119,7 @@ def line_separator(img, parameters):
         prev_has_black = row_has_black
     i = 0
     if len(lines) != parameters.lines_in_block:
-        print("error: detected lines " + str(len(lines)) + "/"+str(parameters.lines_in_block))
+        print("error: detected lines " + str(len(lines)) + "/" + str(parameters.lines_in_block))
     for line in lines:
         i += 1
         shape = [len(line), len(line[0])]
@@ -132,20 +133,24 @@ def line_separator(img, parameters):
 # skraca obraz, usuwając białe piksele po lewej i prawej stronie nut
 def remove_white_space(img):
     # sprawdza piksele po obu stronach ekranu. sprawdza 10% pikseli z prawej i lewej
-    border_size = int(len(img[0]) * 0.10)
+    border_size = int(len(img[0]) * 0.15)
     max_l = 0
     min_r = len(img[0])
-    for row in img:
+    l_found = False
+    for r in range(len(img)):
+        row = img[r]
         for border in range(border_size):
             pixel_l = sum(row[border]) / 3
             border_r = len(row) - 1 - border
             pixel_r = sum(row[border_r]) / 3
             # jesli pixel ok. czarny, to jest potencjalną granicą
-            if pixel_l < 50:
-                if border > max_l:
+            if pixel_l < 150 and not l_found:
+                if border > max_l and list(img[r + 3][border]) == list(row[border]) and list(
+                        img[r + 5][border]) == list(row[border]):
                     max_l = border
-            if pixel_r < 50:
-                if border_r < min_r:
+                    l_found = True
+            if pixel_r < 150:
+                if min_r == len(row) or border_r > min_r:
                     min_r = border_r
 
     new_img = np.zeros((len(img), min_r - max_l, 3), np.uint8)
@@ -204,7 +209,7 @@ def img_reader(parameters):
     print(parameters.folder)
     for i in range(parameters.how_many_img):
         filename = directory + "/" + str(i + 1) + ".PNG"
-        print("\npage "+str(i+1)+"/"+str(parameters.how_many_img))
+        print("\npage " + str(i + 1) + "/" + str(parameters.how_many_img))
         img_all = cv2.imread(filename)
         img_list = divide_blocks(img_all, parameters)
         for j in range(len(img_list)):
@@ -212,7 +217,7 @@ def img_reader(parameters):
             img = remove_white_space(img)
             # scale to the same size
             # img=scale_img(img,70)
-            #cv2.imshow("page " + str(j+1), img)
+            # cv2.imshow("page " + str(j+1), img)
             img_list[j] = img
             # teraz rodzdielanie linii
             line = line_separator(img, parameters)
@@ -257,11 +262,11 @@ if __name__ == "__main__":
         parameters.columns = 2
         parameters.folder = "death with dignity"
         parameters.min_line_size = 30
-        parameters.max_line_size = 50
+        parameters.max_line_size = 55
         parameters.instrument_nr = 1
         parameters.line_black_tolerance = 254.53
         parameters.line_block_tolerance = 254.74
-        parameters.how_many_img = 3
+        parameters.how_many_img = 12
         parameters.max_lines_in_column = 18
         parameters.padding = 25
         parameters.lines_in_block = 6
